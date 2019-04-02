@@ -25,7 +25,7 @@ namespace Distributed_Lab01
             Console.WriteLine("Sleeping...");
             Thread.Sleep(TimeSpan.FromSeconds(5));
 
-            var response = await client.GetStringAsync("http://server/api/values");
+            var response = await client.GetStringAsync("http://server/api/values/Get");
             Console.WriteLine(response);
 
             var jobs = JsonConvert.DeserializeObject<IEnumerable<Job>>(response);

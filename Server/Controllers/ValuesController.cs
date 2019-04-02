@@ -91,7 +91,7 @@ namespace Server.Controllers
 
 
 
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     [ApiController]
     public class ValuesController : ControllerBase
     {
@@ -163,25 +163,6 @@ namespace Server.Controllers
             Counter.Decrement();
             return job;
         }
-
-        // GET api/values/5
-        [HttpGet("{id}")]
-        public ActionResult<string> Get(string key)
-        {
-            if(System.IO.File.Exists(key))
-                return System.IO.File.ReadAllText(key);
-            return null;
-        }
-
-        // POST api/values
-        [HttpPost]
-        public ActionResult<MessageDto> Post([FromBody]MessageDto msg)
-        {
-            System.IO.File.WriteAllText(msg.Key, msg.Value);
-            msg.Result = $"Saved on server at {DateTime.Now}";
-            return msg;
-        }
-
 
     }  
 }
