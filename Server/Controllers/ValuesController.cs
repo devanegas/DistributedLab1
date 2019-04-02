@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Shared;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace Server.Controllers
 {
@@ -37,13 +38,13 @@ namespace Server.Controllers
         public static double  WaitAfterFailure = 10;
         public static double WaitAfterSuccess = 10;
 
-        public static Queue<IEnumerable<Job>> WorkQueue { get; private set; }
+        public static ConcurrentQueue<IEnumerable<Job>> WorkQueue { get; private set; }
         public static Random random = new Random();
 
         static WorkerManager()
         {
             
-            WorkQueue = new Queue<IEnumerable<Job>>();
+            WorkQueue = new ConcurrentQueue<IEnumerable<Job>>();
 
             var jobSource = new[]
             {
@@ -99,8 +100,12 @@ namespace Server.Controllers
         [HttpGet]
         public ActionResult<IEnumerable<Job>> Get()
         {
-            var jobs = WorkerManager.WorkQueue.Dequeue();
-            return new ActionResult<IEnumerable<Job>>(jobs);
+            IEnumerable<Job> job;
+            if (WorkerManager.WorkQueue.TryDequeue(out job))
+            {
+                return new ActionResult<IEnumerable<Job>>(job);
+            }
+            return null;
         }
 
         public ActionResult<Job> DoJob([FromBody]Job job)
@@ -118,7 +123,6 @@ namespace Server.Controllers
                 try
                 {
                     FileStream stream = System.IO.File.OpenWrite(message.Key);
-                    stream.Lock(0, stream.Length);
                     dictionary.Add(message.Key, stream);
                     messageQueue.Dequeue();
                 }
@@ -130,13 +134,13 @@ namespace Server.Controllers
                         break;
                     }
 
-                    Thread.Sleep((int)WorkerManager.WaitAfterFailure*1000);
+                    Thread.Sleep(TimeSpan.FromSeconds(5));
                 }
             }
 
             if (couldOpen)
             {
-                Thread.Sleep((int)WorkerManager.WaitAfterSuccess*1000);
+                Thread.Sleep(TimeSpan.FromSeconds(WorkerManager.WaitAfterSuccess));
                 foreach (var item in dictionary)
                 {
                     using (var writer = new StreamWriter(item.Value))
@@ -145,7 +149,7 @@ namespace Server.Controllers
                         writer.WriteLineAsync(msg.Value);
                     }
                 }
-                Console.WriteLine($"Success!  Saved all values from {job.Requestor}");
+       
                 job.ResultMessage = $"Saved on server at {DateTime.Now} (Current Users: {Counter.CurrentRequests})";
             }
             else
@@ -158,7 +162,6 @@ namespace Server.Controllers
             foreach (var item in dictionary)
             {
                 item.Value.Close();
-                item.Value.Unlock(0, item.Value.Length);
             }
             Counter.Decrement();
             return job;
