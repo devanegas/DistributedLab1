@@ -1,0 +1,1 @@
+docker stack deploy --orchestrator=kubernetes -c .\docker-compose.yml lab
